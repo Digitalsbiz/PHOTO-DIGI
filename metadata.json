@@ -1,0 +1,5 @@
+{
+  "name": "NanoEdit - AI Image Editor",
+  "description": "An intelligent image editor powered by Gemini 2.5 Flash Image. Upload a photo and use natural language to transform, edit, or restore it instantly.",
+  "requestFramePermissions": []
+}
