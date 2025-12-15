@@ -57,9 +57,13 @@ export const processImage = (file: File): Promise<{ base64: string; mimeType: st
   });
 };
 
+interface ImageData {
+    base64: string;
+    mimeType: string;
+}
+
 export const generateEditedImage = async (
-  base64Image: string,
-  mimeType: string,
+  imageInput: ImageData | ImageData[],
   prompt: string
 ): Promise<string> => {
   if (!process.env.API_KEY) {
@@ -69,21 +73,22 @@ export const generateEditedImage = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
+    const inputs = Array.isArray(imageInput) ? imageInput : [imageInput];
+    
+    const parts: any[] = inputs.map(img => ({
+        inlineData: {
+            data: img.base64,
+            mimeType: img.mimeType,
+        }
+    }));
+
+    // Append instruction to ensure the model generates an image and doesn't just chat about it.
+    parts.push({ text: `${prompt}\n\nOutput the edited image.` });
+
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_NAME,
       contents: {
-        parts: [
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: mimeType,
-            },
-          },
-          {
-            // Append instruction to ensure the model generates an image and doesn't just chat about it.
-            text: `${prompt}\n\nOutput the edited image.`,
-          },
-        ],
+        parts: parts,
       },
     });
 
