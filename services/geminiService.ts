@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_MODEL_NAME } from '../constants';
 
@@ -64,7 +65,8 @@ interface ImageData {
 
 export const generateEditedImage = async (
   imageInput: ImageData | ImageData[],
-  prompt: string
+  prompt: string,
+  maskInput?: ImageData
 ): Promise<string> => {
   if (!process.env.API_KEY) {
     throw new Error("API Key not found in environment variables.");
@@ -82,8 +84,30 @@ export const generateEditedImage = async (
         }
     }));
 
-    // Append instruction to ensure the model generates an image and doesn't just chat about it.
-    parts.push({ text: `${prompt}\n\nOutput the edited image.` });
+    let finalPrompt = prompt;
+
+    // If a mask is provided, append it to inputs and update the prompt
+    if (maskInput) {
+        parts.push({
+            inlineData: {
+                data: maskInput.base64,
+                mimeType: maskInput.mimeType
+            }
+        });
+        finalPrompt = `You are an expert image editor. I have provided the original image and a mask image where WHITE pixels represent the target area for modification and BLACK pixels represent the area to keep unchanged. 
+
+TASK: Apply the following change ONLY to the white masked region: ${prompt}
+
+Guidelines:
+1. Ensure the change is seamless and realistic at the boundaries of the mask.
+2. Maintain the lighting and perspective of the original image.
+3. Keep the non-masked areas identical to the original.
+4. Output ONLY the resulting edited image.`;
+    } else {
+        finalPrompt = `${prompt}\n\nOutput the edited image.`;
+    }
+
+    parts.push({ text: finalPrompt });
 
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_NAME,
@@ -112,8 +136,6 @@ export const generateEditedImage = async (
     if (!generatedImageUrl) {
         const textPart = candidate.content.parts.find(p => p.text);
         if (textPart) {
-             // Sometimes the model refuses and returns text.
-             // Truncate text if it's too long for an error message
              const msg = textPart.text.length > 100 ? textPart.text.substring(0, 100) + "..." : textPart.text;
             throw new Error(`Model returned text: ${msg}`);
         }
@@ -124,7 +146,6 @@ export const generateEditedImage = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    // Improve error messaging for common issues
     if (error.message && (error.message.includes("500") || error.message.includes("xhr error"))) {
          throw new Error("Network error: The image might be too large or the connection failed. Please try a smaller image.");
     }

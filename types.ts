@@ -1,5 +1,6 @@
+
 export interface ImageFile {
-  file: File;
+  file?: File; // File object is not serializable for localStorage
   previewUrl: string;
   base64: string;
   mimeType: string;
@@ -24,4 +25,13 @@ export interface QuickAction {
   label: string;
   prompt: string;
   icon: string;
+}
+
+export interface SavedSession {
+  sourceImage: ImageFile;
+  generatedImage: string | null;
+  prompt: string;
+  intensity: number;
+  lastPaperSize: string;
+  timestamp: number;
 }

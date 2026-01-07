@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const UploadIcon = () => (
@@ -176,5 +177,69 @@ export const TypeIcon = () => (
     <polyline points="4 7 4 4 20 4 20 7" />
     <line x1="9" y1="20" x2="15" y2="20" />
     <line x1="12" y1="4" x2="12" y2="20" />
+  </svg>
+);
+
+export const SaveIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+
+export const HistoryIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M12 7v5l4 2" />
+  </svg>
+);
+
+export const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const LayersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.02a1 1 0 0 0 0 1.83l8.57 3.84a2 2 0 0 0 1.66 0l8.57-3.84a1 1 0 0 0 0-1.83Z" />
+    <path d="m2.2 17.62 6.67 3a2 2 0 0 0 1.66 0l11.27-5.06a1 1 0 0 0 0-1.83l-4.57-2.04" />
+    <path d="m2.2 12.62 6.67 3a2 2 0 0 0 1.66 0l11.27-5.06a1 1 0 0 0 0-1.83l-4.57-2.04" />
+  </svg>
+);
+
+export const LayoutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    <line x1="3" x2="21" y1="9" y2="9" />
+    <line x1="9" x2="9" y1="21" y2="9" />
+  </svg>
+);
+
+export const BrushIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" />
+    <path d="M7.07 14.94c-3.91.35-7.07 3.54-7.07 7.46 0 .33.27.6.6.6h11.41c.33 0 .6-.27.6-.6 0-3.92-3.14-7.11-7.05-7.46" />
+    <path d="m14.5 9 1.5 1.5" />
+    <path d="M12.5 7 14 8.5" />
+    <path d="m10.5 5 1.5 1.5" />
+  </svg>
+);
+
+export const EraserIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+    <path d="M22 21H7" />
+    <path d="m5 11 9 9" />
+  </svg>
+);
+
+export const MousePointerIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+    <path d="m13 13 6 6" />
   </svg>
 );
