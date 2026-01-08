@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { BrushIcon, EraserIcon, CheckIcon, TrashIcon } from './Icons';
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { IdCardIcon, XIcon, PlusIcon, LoadingSpinner, SparklesIcon, ImageIcon, ChevronDownIcon, UserIcon } from './Icons';
 import { processImage } from '../services/geminiService';

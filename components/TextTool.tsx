@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { CheckIcon, LoadingSpinner } from './Icons';
 
@@ -36,22 +35,22 @@ const TextTool: React.FC<TextToolProps> = ({ imageSrc, onCancel, onApply }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const handleDragStart = (_e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragStart = () => {
     setIsDragging(true);
   };
 
-  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragMove = (e: any) => {
     if (!isDragging || !containerRef.current) return;
 
     const containerRect = containerRef.current.getBoundingClientRect();
     let clientX, clientY;
 
-    if ('touches' in e) {
+    if (e.touches) {
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
-      clientX = (e as React.MouseEvent).clientX;
-      clientY = (e as React.MouseEvent).clientY;
+      clientX = e.clientX;
+      clientY = e.clientY;
     }
 
     // Calculate percentage position
@@ -71,20 +70,20 @@ const TextTool: React.FC<TextToolProps> = ({ imageSrc, onCancel, onApply }) => {
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleDragMove as any);
+      window.addEventListener('mousemove', handleDragMove);
       window.addEventListener('mouseup', handleDragEnd);
-      window.addEventListener('touchmove', handleDragMove as any);
+      window.addEventListener('touchmove', handleDragMove);
       window.addEventListener('touchend', handleDragEnd);
     } else {
-      window.removeEventListener('mousemove', handleDragMove as any);
+      window.removeEventListener('mousemove', handleDragMove);
       window.removeEventListener('mouseup', handleDragEnd);
-      window.removeEventListener('touchmove', handleDragMove as any);
+      window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
     }
     return () => {
-      window.removeEventListener('mousemove', handleDragMove as any);
+      window.removeEventListener('mousemove', handleDragMove);
       window.removeEventListener('mouseup', handleDragEnd);
-      window.removeEventListener('touchmove', handleDragMove as any);
+      window.removeEventListener('touchmove', handleDragMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
   }, [isDragging]);
@@ -107,13 +106,6 @@ const TextTool: React.FC<TextToolProps> = ({ imageSrc, onCancel, onApply }) => {
       // Draw image
       ctx.drawImage(img, 0, 0);
 
-      // Draw text
-      // Need to scale font size relative to image size vs screen size
-      // We used a fixed fontSize in UI (e.g. 40px) relative to the viewed image size.
-      // But the viewed image is scaled down. 
-      // A robust way: Define font size as % of image height? 
-      // Or just map the visual ratio.
-      
       const containerRect = containerRef.current?.getBoundingClientRect();
       if (containerRect) {
          // Scale factor

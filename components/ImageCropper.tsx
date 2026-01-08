@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg, { PixelCrop } from '../utils/cropImage';

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_MODEL_NAME } from '../constants';
 
@@ -68,11 +67,12 @@ export const generateEditedImage = async (
   prompt: string,
   maskInput?: ImageData
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
     throw new Error("API Key not found in environment variables.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const inputs = Array.isArray(imageInput) ? imageInput : [imageInput];
