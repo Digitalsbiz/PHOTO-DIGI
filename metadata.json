@@ -1,5 +1,10 @@
 {
   "name": "NanoEdit - AI Image Editor",
-  "description": "An intelligent image editor powered by Gemini 2.5 Flash Image. Upload a photo and use natural language to transform, edit, or restore it instantly.",
-  "requestFramePermissions": []
+  "description": "An intelligent image editor powered by Gemini 2.5 Flash Image. Works offline for local edits like cropping, color adjustment, and text.",
+  "requestFramePermissions": [],
+  "short_name": "NanoEdit",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#6366f1"
 }

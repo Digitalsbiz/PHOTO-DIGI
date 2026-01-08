@@ -11,13 +11,25 @@ const App: React.FC = () => {
   const [image, setImage] = useState<ImageFile | null>(null);
   const [restoredSession, setRestoredSession] = useState<SavedSession | null>(null);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     const saved = loadSession();
     if (saved) {
       setRestoredSession(saved);
     }
     setHasCheckedSession(true);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const handleImageSelected = (selectedImage: ImageFile) => {
@@ -45,8 +57,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans selection:bg-indigo-500/30">
-      <Header />
+      <Header isOnline={isOnline} />
       
+      {!isOnline && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 py-2 px-4 text-center">
+          <p className="text-xs font-bold text-amber-500 uppercase tracking-widest flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            Working Offline: Local tools available. AI features require internet.
+          </p>
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {!image ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -104,16 +125,16 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center w-full max-w-4xl pt-8 border-t border-gray-800/50">
                 <div className="p-4 rounded-lg bg-gray-900/30 border border-gray-800/50">
-                    <div className="font-semibold text-indigo-400 mb-1">Fast</div>
-                    <div className="text-sm text-gray-500">Optimized for speed with Flash model</div>
+                    <div className="font-semibold text-indigo-400 mb-1">Local Processing</div>
+                    <div className="text-sm text-gray-500">Crop, Adjust, and Text tools work offline</div>
                 </div>
                 <div className="p-4 rounded-lg bg-gray-900/30 border border-gray-800/50">
-                    <div className="font-semibold text-purple-400 mb-1">Creative</div>
-                    <div className="text-sm text-gray-500">Understanding of complex stylistic prompts</div>
+                    <div className="font-semibold text-purple-400 mb-1">AI Ready</div>
+                    <div className="text-sm text-gray-500">Instantly edit via Gemini when connected</div>
                 </div>
                 <div className="p-4 rounded-lg bg-gray-900/30 border border-gray-800/50">
-                    <div className="font-semibold text-pink-400 mb-1">Precise</div>
-                    <div className="text-sm text-gray-500">Maintains subject integrity while editing</div>
+                    <div className="font-semibold text-pink-400 mb-1">Permanent</div>
+                    <div className="text-sm text-gray-500">Autosaves your progress in the browser</div>
                 </div>
             </div>
           </div>
@@ -125,12 +146,13 @@ const App: React.FC = () => {
             initialIntensity={restoredSession?.intensity}
             initialPaperSize={restoredSession?.lastPaperSize}
             onReset={handleReset} 
+            isOnline={isOnline}
           />
         )}
       </main>
       
       <footer className="py-8 text-center text-sm text-gray-600 border-t border-gray-900 mt-auto">
-        <p>Built with React, Tailwind & Gemini API</p>
+        <p>Built with React, Tailwind & Gemini API • Fully Offline Capable</p>
       </footer>
     </div>
   );

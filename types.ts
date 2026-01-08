@@ -35,3 +35,10 @@ export interface SavedSession {
   lastPaperSize: string;
   timestamp: number;
 }
+
+export interface SavedPassport {
+  id: string;
+  image: string;
+  paperSize: string;
+  timestamp: number;
+}

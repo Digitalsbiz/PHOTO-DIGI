@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ImageFile, AppState, QuickAction, SavedSession } from '../types';
+import { ImageFile, AppState, QuickAction, SavedSession, SavedPassport } from '../types';
 import { generateEditedImage } from '../services/geminiService';
 import { QUICK_ACTIONS } from '../constants';
-import { MagicWandIcon, LoadingSpinner, TrashIcon, DownloadIcon, ChevronRight, SparklesIcon, IdCardIcon, CropIcon, SlidersIcon, CircleHalfIcon, DropletIcon, ArrowRightLeftIcon, UserIcon, MaximizeIcon, PaletteIcon, PaintBucketIcon, ChevronDownIcon, TypeIcon, ImageIcon, SaveIcon, CheckIcon, HistoryIcon, XIcon, LayersIcon, MousePointerIcon } from './Icons';
+import { MagicWandIcon, LoadingSpinner, TrashIcon, DownloadIcon, ChevronRight, SparklesIcon, IdCardIcon, CropIcon, SlidersIcon, CircleHalfIcon, DropletIcon, ArrowRightLeftIcon, UserIcon, MaximizeIcon, PaletteIcon, PaintBucketIcon, ChevronDownIcon, TypeIcon, ImageIcon, SaveIcon, CheckIcon, HistoryIcon, XIcon, LayersIcon, MousePointerIcon, BookmarkIcon } from './Icons';
 import ImageCropper from './ImageCropper';
 import ImageAdjuster from './ImageAdjuster';
 import BackgroundTool from './BackgroundTool';
@@ -13,7 +13,7 @@ import MergeDialog from './MergeDialog';
 import SelectionTool from './SelectionTool';
 import { jsPDF } from "jspdf";
 import { generateLocalPassportSheet, calculateMaxCapacity } from '../utils/passportGenerator';
-import { saveSession, clearSession } from '../services/storageService';
+import { saveSession, clearSession, savePassportToGallery, getPassportGallery, deletePassportFromGallery } from '../services/storageService';
 
 interface EditorProps {
   initialImage: ImageFile;
@@ -22,6 +22,7 @@ interface EditorProps {
   initialIntensity?: number;
   initialPaperSize?: string;
   onReset: () => void;
+  isOnline?: boolean;
 }
 
 const Editor: React.FC<EditorProps> = ({ 
@@ -30,7 +31,8 @@ const Editor: React.FC<EditorProps> = ({
   initialPrompt = '',
   initialIntensity = 100,
   initialPaperSize = '4x6',
-  onReset 
+  onReset,
+  isOnline = true
 }) => {
   const [originalImage] = useState<ImageFile>(initialImage);
   const [sourceImage, setSourceImage] = useState<ImageFile>(initialImage);
@@ -50,12 +52,17 @@ const Editor: React.FC<EditorProps> = ({
   const [lastPaperSize, setLastPaperSize] = useState<string>(initialPaperSize);
   const [isManualSheet, setIsManualSheet] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'autosaved'>('idle');
+  const [galleryItems, setGalleryItems] = useState<SavedPassport[]>([]);
 
   // Targeted Edit state
   const [activeMask, setActiveMask] = useState<string | null>(null);
 
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setGalleryItems(getPassportGallery());
+  }, []);
 
   // Auto-save logic: Runs every 60 seconds
   useEffect(() => {
@@ -90,6 +97,35 @@ const Editor: React.FC<EditorProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const handleSaveToGallery = () => {
+    if (!generatedImage) return;
+    const newPassport: SavedPassport = {
+        id: Date.now().toString(),
+        image: generatedImage,
+        paperSize: lastPaperSize,
+        timestamp: Date.now()
+    };
+    if (savePassportToGallery(newPassport)) {
+        setGalleryItems(getPassportGallery());
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  };
+
+  const handleRestoreFromGallery = (item: SavedPassport) => {
+    setGeneratedImage(item.image);
+    setLastPaperSize(item.paperSize);
+    setAppState(AppState.SUCCESS);
+    setIsManualSheet(true); // Treat it like a manual sheet for UI purposes (no AI blend)
+    setPrompt("Restored Passport from Suite");
+  };
+
+  const handleDeleteFromGallery = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deletePassportFromGallery(id);
+    setGalleryItems(getPassportGallery());
+  };
 
   const handleSaveProgress = () => {
     setSaveStatus('saving');
@@ -126,6 +162,12 @@ const Editor: React.FC<EditorProps> = ({
   };
 
   const handleGenerate = async (selectedPrompt?: string, additionalImages?: { base64: string; mimeType: string }[]) => {
+    if (!isOnline) {
+      setErrorMessage("Internet connection lost. AI features require an online connection.");
+      setAppState(AppState.ERROR);
+      return;
+    }
+
     const promptToUse = selectedPrompt || prompt;
     if (!promptToUse.trim()) return;
 
@@ -154,7 +196,6 @@ const Editor: React.FC<EditorProps> = ({
 
       setGeneratedImage(resultBase64);
       setAppState(AppState.SUCCESS);
-      // Clear mask after successful generation if it was a targeted edit
       setActiveMask(null);
     } catch (err: any) {
       console.error(err);
@@ -172,20 +213,40 @@ const Editor: React.FC<EditorProps> = ({
     handleGenerate(action.prompt);
   };
 
+  const handleUpscaleResult = async () => {
+      if (!generatedImage || !isOnline) return;
+
+      // 1. Commit result to source
+      const finalImage = await getBlendedImage();
+      const base64 = finalImage.split(',')[1];
+      
+      setSourceImage({
+          ...sourceImage,
+          base64: base64,
+          previewUrl: finalImage
+      });
+
+      // 2. Apply Upscale prompt
+      const upscaleAction = QUICK_ACTIONS.find(a => a.label === 'AI Upscale');
+      const upscalePrompt = upscaleAction?.prompt || 'Upscale this image to high resolution.';
+      setPrompt(upscalePrompt);
+      handleGenerate(upscalePrompt);
+  };
+
   const handlePassportConfirm = async (
       quantity: number | 'max', 
       paperSize: string, 
       dimensions: string, 
       format: string, 
       additionalImages: { base64: string; mimeType: string }[],
-      enableEnhancement: boolean
+      mode: 'manual' | 'enhance' | 'studio'
   ) => {
     setIsPassportDialogOpen(false);
     setLastPaperSize(paperSize);
     
-    if (!enableEnhancement) {
+    if (mode === 'manual' || !isOnline) {
         setAppState(AppState.GENERATING);
-        setPrompt("Manual Passport Sheet (No AI)");
+        setPrompt("Manual Passport Sheet");
         setIsManualSheet(true);
         try {
             const sheet = await generateLocalPassportSheet({
@@ -209,8 +270,13 @@ const Editor: React.FC<EditorProps> = ({
     if (subjectCount > 1) subjectText = `the ${subjectCount} provided subjects`;
     
     const actualQty = quantity === 'max' ? calculateMaxCapacity(paperSize, dimensions) : quantity;
-
-    const enhancementInstruction = "IMPORTANT: First, apply a professional studio portrait enhancement to all subjects. Improve lighting to be balanced and professional. Enhance resolution, skin texture, and facial details to look hyper-realistic and high-quality, similar to a professional studio photo. Ensure the person keeps their original identity but looks their best. Then, using these enhanced versions, ";
+    
+    let enhancementInstruction = "";
+    if (mode === 'studio') {
+        enhancementInstruction = "IMPORTANT: Transform all subjects into high-end professional studio portraits. Apply world-class studio lighting that is perfectly balanced and flattering. Enhance resolution, skin texture, and facial details to look hyper-realistic and premium. Maintain original identity and hairstyle, but present the subjects in their absolute best light as if photographed by a professional portrait artist. Then, using these high-end studio versions, ";
+    } else {
+        enhancementInstruction = "IMPORTANT: First, apply a professional studio portrait enhancement to all subjects. Improve lighting to be balanced and professional. Enhance resolution, skin texture, and facial details to look hyper-realistic and high-quality, similar to a professional studio photo. Ensure the person keeps their original identity but looks their best. Then, using these enhanced versions, ";
+    }
 
     const passportPrompt = `${enhancementInstruction}Create a printable image sheet formatted for ${paperSize} paper, containing exactly ${actualQty} passport photos arranged in an optimal grid layout to maximize space. I have provided ${subjectCount} image(s). Use these images to generate the passport photos. Distribute the copies evenly among ${subjectText}. Each copy must be formatted as a standard ${dimensions} passport photo (portrait orientation) with a ${format}. Ensure even spacing and professional alignment. The subjects should be centered and facing forward in each copy.`;
     
@@ -348,7 +414,7 @@ const Editor: React.FC<EditorProps> = ({
     const p = prompt.toLowerCase();
     if (activeMask) return 'Applying targeted AI edit...';
     if (p.includes('merge')) return 'Merging images into cohesive piece...';
-    if (p.includes('upscale')) return 'Upscaling image resolution & details...';
+    if (p.includes('upscale')) return 'Hallucinating high-resolution details...';
     if (p.includes('passport')) return 'Generating passport layout...';
     if (p.includes('remove background')) return 'Removing background...';
     if (p.includes('colorize')) return 'Colorizing image...';
@@ -357,12 +423,15 @@ const Editor: React.FC<EditorProps> = ({
     return 'Designing your new image...';
   };
 
+  const isCurrentResultPassport = prompt.toLowerCase().includes('passport') || isManualSheet;
+
   return (
     <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
       
       <PassportDialog 
         isOpen={isPassportDialogOpen} 
         currentImageSrc={sourceImage.previewUrl}
+        isOnline={isOnline}
         onClose={() => setIsPassportDialogOpen(false)} 
         onConfirm={handlePassportConfirm} 
       />
@@ -399,9 +468,6 @@ const Editor: React.FC<EditorProps> = ({
                 {saveStatus === 'saving' ? <LoadingSpinner /> : (saveStatus === 'saved' ? <CheckIcon /> : (saveStatus === 'autosaved' ? <CheckIcon /> : <SaveIcon />))}
                 <span>{saveStatus === 'saved' ? 'Saved' : (saveStatus === 'error' ? 'Storage Full' : (saveStatus === 'autosaved' ? 'Auto-saved' : 'Save'))}</span>
             </button>
-            {saveStatus === 'autosaved' && (
-                <span className="text-[10px] text-indigo-500/80 font-bold uppercase animate-pulse">Session Protected</span>
-            )}
           </div>
 
           <div className="w-px h-4 bg-gray-800" />
@@ -423,12 +489,12 @@ const Editor: React.FC<EditorProps> = ({
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder={activeMask ? "Describe change for SELECTED area..." : "Describe your AI edit..."}
-                className={`w-full bg-gray-950 border text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-500 transition-all ${activeMask ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-gray-700'}`}
+                placeholder={!isOnline ? "Connect to internet for AI edits..." : (activeMask ? "Describe change for SELECTED area..." : "Describe your AI edit...")}
+                className={`w-full bg-gray-950 border text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-500 transition-all ${activeMask ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-gray-700'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-                disabled={appState === AppState.GENERATING || isAnyToolActive}
+                disabled={appState === AppState.GENERATING || isAnyToolActive || !isOnline}
               />
-              {activeMask && (
+              {activeMask && isOnline && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-1 rounded">Targeted</span>
                       <button onClick={() => setActiveMask(null)} className="text-gray-500 hover:text-red-400 transition-colors"><XIcon /></button>
@@ -437,11 +503,15 @@ const Editor: React.FC<EditorProps> = ({
           </div>
           <button
             onClick={() => handleGenerate()}
-            disabled={appState === AppState.GENERATING || !prompt.trim() || isAnyToolActive}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 min-w-[140px] justify-center"
+            disabled={appState === AppState.GENERATING || !prompt.trim() || isAnyToolActive || !isOnline}
+            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 min-w-[140px] justify-center ${
+              !isOnline 
+              ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
+              : 'bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 disabled:cursor-not-allowed text-white'
+            }`}
           >
             {appState === AppState.GENERATING ? <LoadingSpinner /> : <MagicWandIcon />}
-            <span>{appState === AppState.GENERATING ? 'Working...' : 'AI Generate'}</span>
+            <span>{appState === AppState.GENERATING ? 'Working...' : (!isOnline ? 'Offline' : 'AI Generate')}</span>
           </button>
         </div>
       </div>
@@ -456,14 +526,29 @@ const Editor: React.FC<EditorProps> = ({
                 <div className="flex gap-2">
                     {!isAnyToolActive && (
                         <>
-                            <button onClick={() => setIsSelecting(true)} className={`text-[10px] font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors border uppercase tracking-widest ${activeMask ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-gray-800 hover:bg-gray-700 text-indigo-400 border-gray-700'}`}>
+                            <button 
+                                onClick={() => setIsSelecting(true)} 
+                                disabled={!isOnline}
+                                className={`text-[10px] font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors border uppercase tracking-widest ${
+                                  !isOnline ? 'bg-gray-800/50 text-gray-600 border-gray-800 cursor-not-allowed' : 
+                                  (activeMask ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-gray-800 hover:bg-gray-700 text-indigo-400 border-gray-700')
+                                }`}
+                            >
                                 <MousePointerIcon /> 
                                 {activeMask ? 'Edit Selection' : 'Smart Select'}
                             </button>
-                            <button onClick={() => setIsBackgroundMode(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest"><SparklesIcon />AI BG</button>
-                            <button onClick={() => setIsTextMode(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest"><TypeIcon />Text</button>
-                            <button onClick={() => setIsAdjusting(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest"><SlidersIcon />Adjust</button>
-                            <button onClick={() => setIsCropping(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest"><CropIcon />Crop</button>
+                            <button 
+                                onClick={() => setIsBackgroundMode(true)} 
+                                disabled={!isOnline}
+                                className={`text-[10px] font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors border uppercase tracking-widest ${
+                                  !isOnline ? 'bg-gray-800/50 text-gray-600 border-gray-800 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700'
+                                }`}
+                            >
+                                <SparklesIcon />AI BG
+                            </button>
+                            <button onClick={() => setIsTextMode(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest" title="Works Offline"><TypeIcon />Text</button>
+                            <button onClick={() => setIsAdjusting(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest" title="Works Offline"><SlidersIcon />Adjust</button>
+                            <button onClick={() => setIsCropping(true)} className="text-[10px] font-bold flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition-colors border border-gray-700 uppercase tracking-widest" title="Works Offline"><CropIcon />Crop</button>
                         </>
                     )}
                 </div>
@@ -494,27 +579,48 @@ const Editor: React.FC<EditorProps> = ({
         <div className="flex flex-col gap-3 h-full">
              <div className="flex justify-between items-center h-[32px]">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">AI Result</h3>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Studio Result</h3>
                   {generatedImage && isManualSheet && (
                     <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold border border-amber-500/20 tracking-wide uppercase">
-                      <ImageIcon /> Manual Layout
+                      <ImageIcon /> Result Mode
                     </span>
                   )}
                 </div>
                 {generatedImage && (
-                    <div className="relative" ref={downloadMenuRef}>
-                        <button onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40">
-                            <DownloadIcon /> <span>Export</span> <ChevronDownIcon />
-                        </button>
-                        {isDownloadMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                                <button onClick={() => handleDownload('png')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>PNG</span><span className="text-[10px] text-gray-500">HQ</span></button>
-                                <div className="h-px bg-gray-800 mx-2"></div>
-                                <button onClick={() => handleDownload('jpeg')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>JPG</span><span className="text-[10px] text-gray-500">Std</span></button>
-                                <div className="h-px bg-gray-800 mx-2"></div>
-                                <button onClick={() => handleDownload('pdf')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>PDF</span><span className="text-[10px] text-gray-500">Print</span></button>
-                            </div>
+                    <div className="flex gap-2">
+                        {isOnline && !isManualSheet && (
+                            <button 
+                                onClick={handleUpscaleResult}
+                                disabled={appState === AppState.GENERATING}
+                                className="flex items-center gap-2 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all border border-purple-500/30"
+                                title="Use AI to upscale and enhance current result"
+                            >
+                                <MaximizeIcon /> <span>AI Upscale</span>
+                            </button>
                         )}
+                        {isCurrentResultPassport && (
+                            <button 
+                                onClick={handleSaveToGallery}
+                                className="flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all border border-indigo-500/30"
+                                title="Save this passport sheet to your Suite Gallery"
+                            >
+                                <BookmarkIcon /> <span>Save to Suite</span>
+                            </button>
+                        )}
+                        <div className="relative" ref={downloadMenuRef}>
+                            <button onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40">
+                                <DownloadIcon /> <span>Export</span> <ChevronDownIcon />
+                            </button>
+                            {isDownloadMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                                    <button onClick={() => handleDownload('png')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>PNG</span><span className="text-[10px] text-gray-500">HQ</span></button>
+                                    <div className="h-px bg-gray-800 mx-2"></div>
+                                    <button onClick={() => handleDownload('jpeg')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>JPG</span><span className="text-[10px] text-gray-500">Std</span></button>
+                                    <div className="h-px bg-gray-800 mx-2"></div>
+                                    <button onClick={() => handleDownload('pdf')} className="w-full text-left px-4 py-3 hover:bg-gray-800 text-xs font-bold uppercase tracking-widest text-gray-200 hover:text-white transition-colors flex items-center justify-between"><span>PDF</span><span className="text-[10px] text-gray-500">Print</span></button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
              </div>
@@ -527,7 +633,7 @@ const Editor: React.FC<EditorProps> = ({
               )}
               
               {errorMessage ? (
-                <div className="text-center p-8 max-w-sm">
+                <div className="text-center p-8 max-sm">
                   <div className="text-red-400 mb-2 text-4xl">!</div>
                   <p className="text-red-300 text-sm font-medium">{errorMessage}</p>
                   <button onClick={() => handleGenerate()} className="mt-4 text-xs text-gray-500 uppercase font-bold hover:text-white transition-colors">Try again</button>
@@ -559,13 +665,18 @@ const Editor: React.FC<EditorProps> = ({
       <div className="space-y-6 bg-gray-900/30 p-6 rounded-2xl border border-gray-800/50">
         <div className="flex flex-col gap-6">
             <div>
-                <div className="flex items-center gap-2 mb-4">
-                    <SparklesIcon />
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">AI Quick Presets</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <SparklesIcon />
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">AI Quick Presets</h3>
+                    </div>
+                    <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Scroll for more</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {QUICK_ACTIONS.filter(a => a.label !== 'Passport Photo').slice(0, 7).map((action) => (
-                    <button key={action.label} onClick={() => handleQuickAction(action)} disabled={appState === AppState.GENERATING || isAnyToolActive} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-800/50 hover:bg-indigo-900/20 border border-gray-700 hover:border-indigo-500/50 transition-all text-center group disabled:opacity-50">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
+                {QUICK_ACTIONS.filter(a => a.label !== 'Passport Photo').map((action) => (
+                    <button key={action.label} onClick={() => handleQuickAction(action)} disabled={appState === AppState.GENERATING || isAnyToolActive || !isOnline} className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all text-center group ${
+                      !isOnline ? 'bg-gray-800/30 border-gray-800 opacity-50 cursor-not-allowed' : 'bg-gray-800/50 hover:bg-indigo-900/20 border border-gray-700 hover:border-indigo-500/50'
+                    }`}>
                     <div className="text-gray-500 group-hover:text-indigo-400 transition-colors">
                         {action.icon === 'sparkles' && <SparklesIcon />}
                         {action.icon === 'user' && <UserIcon />}
@@ -574,6 +685,11 @@ const Editor: React.FC<EditorProps> = ({
                         {action.icon === 'zap' && <div className="text-sm">⚡</div>}
                         {action.icon === 'pencil' && <div className="text-sm">✏️</div>}
                         {action.icon === 'maximize' && <MaximizeIcon />}
+                        {action.icon === 'grayscale' && <CircleHalfIcon />}
+                        {action.icon === 'sepia' && <DropletIcon />}
+                        {action.icon === 'invert' && <ArrowRightLeftIcon />}
+                        {action.icon === 'scissors' && <div className="text-sm">✂️</div>}
+                        {action.icon === 'sun' && <div className="text-sm">☀️</div>}
                     </div>
                     <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-200 uppercase tracking-wider">{action.label}</span>
                     </button>
@@ -587,18 +703,58 @@ const Editor: React.FC<EditorProps> = ({
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">Professional Layouts</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button onClick={() => setIsPassportDialogOpen(true)} className="flex items-center gap-4 p-4 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/50 transition-all group">
-                        <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg group-hover:scale-110 transition-transform"><IdCardIcon /></div>
-                        <div className="text-left">
-                            <div className="text-xs font-bold text-white uppercase tracking-widest">Passport Suite</div>
-                            <div className="text-[10px] text-gray-400 font-medium">Auto-grid & print optimization</div>
-                        </div>
-                    </button>
-                    <button onClick={() => setIsMergeDialogOpen(true)} className="flex items-center gap-4 p-4 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 hover:border-purple-500/50 transition-all group">
+                    <div className="flex flex-col gap-3">
+                        <button onClick={() => setIsPassportDialogOpen(true)} className="flex items-center gap-4 p-4 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/50 transition-all group w-full text-left">
+                            <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg group-hover:scale-110 transition-transform"><IdCardIcon /></div>
+                            <div>
+                                <div className="text-xs font-bold text-white uppercase tracking-widest">Passport Suite</div>
+                                <div className="text-[10px] text-gray-400 font-medium">Auto-grid & print optimization (Manual mode available offline)</div>
+                            </div>
+                        </button>
+                        
+                        {galleryItems.length > 0 && (
+                            <div className="bg-gray-900/40 p-4 rounded-xl border border-gray-800">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <BookmarkIcon />
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Recent Passports in Suite</span>
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                                    {galleryItems.map(item => (
+                                        <div 
+                                            key={item.id} 
+                                            className="relative flex-shrink-0 w-16 h-20 bg-gray-950 rounded border border-gray-800 cursor-pointer group hover:border-indigo-500/50 transition-all"
+                                            onClick={() => handleRestoreFromGallery(item)}
+                                        >
+                                            <img src={item.image} alt="Saved Passport" className="w-full h-full object-cover rounded" />
+                                            <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/20 transition-all flex items-center justify-center">
+                                                <button 
+                                                    onClick={(e) => handleDeleteFromGallery(item.id, e)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 bg-red-500 text-white rounded-full transition-opacity absolute -top-1 -right-1 shadow-lg"
+                                                >
+                                                    <XIcon />
+                                                </button>
+                                            </div>
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white text-center py-0.5 truncate px-1">
+                                                {item.paperSize}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={() => setIsMergeDialogOpen(true)} 
+                        disabled={!isOnline}
+                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all group ${
+                          !isOnline ? 'bg-gray-800/30 border-gray-800 opacity-50 cursor-not-allowed' : 'bg-purple-600/10 hover:bg-purple-600/20 border-purple-500/20 hover:border-purple-500/50'
+                        }`}
+                    >
                         <div className="p-3 bg-purple-500/20 text-purple-400 rounded-lg group-hover:scale-110 transition-transform"><LayersIcon /></div>
                         <div className="text-left">
                             <div className="text-xs font-bold text-white uppercase tracking-widest">Merge Photos</div>
-                            <div className="text-[10px] text-gray-400 font-medium">Cohesive artistic merging</div>
+                            <div className="text-[10px] text-gray-400 font-medium">{!isOnline ? 'Internet required for AI merging' : 'Cohesive artistic merging'}</div>
                         </div>
                     </button>
                 </div>
