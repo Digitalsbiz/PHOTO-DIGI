@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { CheckIcon, XIcon, PaintBucketIcon } from './Icons';
+import { CheckIcon, XIcon, SparklesIcon, MagicWandIcon, ImageIcon } from './Icons';
 
 interface BackgroundToolProps {
   imageSrc: string;
@@ -7,94 +8,145 @@ interface BackgroundToolProps {
   onApply: (prompt: string) => void;
 }
 
-const COLORS = [
+const SOLID_COLORS = [
   { name: 'White', value: '#ffffff', class: 'bg-white border-gray-300' },
-  { name: 'Black', value: '#000000', class: 'bg-black border-gray-700' },
-  { name: 'Gray', value: '#808080', class: 'bg-gray-500 border-gray-600' },
-  { name: 'Red', value: '#ef4444', class: 'bg-red-500 border-red-600' },
-  { name: 'Orange', value: '#f97316', class: 'bg-orange-500 border-orange-600' },
-  { name: 'Yellow', value: '#eab308', class: 'bg-yellow-500 border-yellow-600' },
-  { name: 'Green', value: '#22c55e', class: 'bg-green-500 border-green-600' },
-  { name: 'Teal', value: '#14b8a6', class: 'bg-teal-500 border-teal-600' },
-  { name: 'Blue', value: '#3b82f6', class: 'bg-blue-500 border-blue-600' },
-  { name: 'Indigo', value: '#6366f1', class: 'bg-indigo-500 border-indigo-600' },
-  { name: 'Purple', value: '#a855f7', class: 'bg-purple-500 border-purple-600' },
-  { name: 'Pink', value: '#ec4899', class: 'bg-pink-500 border-pink-600' },
+  { name: 'Studio Gray', value: '#e2e8f0', class: 'bg-slate-200 border-slate-300' },
+  { name: 'Deep Blue', value: '#1e3a8a', class: 'bg-blue-900 border-blue-800' },
+  { name: 'Pitch Black', value: '#000000', class: 'bg-black border-gray-800' },
+  { name: 'Corporate Teal', value: '#134e4a', class: 'bg-teal-900 border-teal-800' },
+  { name: 'Warm Beige', value: '#f5f5dc', class: 'bg-[#f5f5dc] border-[#e5e5cc]' },
+];
+
+const CREATIVE_SCENES = [
+  { id: 'office', label: 'Modern Office', prompt: 'a high-end, blurred modern office interior with soft window lighting and mahogany furniture.', icon: '🏢' },
+  { id: 'garden', label: 'Lush Garden', prompt: 'a beautiful, soft-focus botanical garden with vibrant greenery and dappled sunlight.', icon: '🌿' },
+  { id: 'cyberpunk', label: 'Neon City', prompt: 'a futuristic cyberpunk street at night with glowing neon signs, puddles, and purple/blue lighting.', icon: '🏙️' },
+  { id: 'minimal', label: 'Minimalist Wall', prompt: 'a clean, minimalist concrete wall with a subtle aesthetic shadow of a palm leaf.', icon: '🎨' },
+  { id: 'nature', label: 'Mist Mountain', prompt: 'a majestic mountain range covered in morning mist and pine trees, dramatic landscape.', icon: '🏔️' },
+  { id: 'interior', label: 'Luxury Loft', prompt: 'a luxury industrial loft with exposed brick, large windows, and warm ambient lighting.', icon: '🏠' },
 ];
 
 const BackgroundTool: React.FC<BackgroundToolProps> = ({ imageSrc, onCancel, onApply }) => {
-  const [customColor, setCustomColor] = useState('');
+  const [activeTab, setActiveTab] = useState<'solid' | 'creative'>('creative');
+  const [customDescription, setCustomDescription] = useState('');
 
-  const handleColorClick = (colorName: string) => {
-    const prompt = `Change the background of this image to a solid ${colorName} color. Keep the foreground subject exactly as is, maintaining all original details and lighting.`;
-    onApply(prompt);
+  const handleApply = (description: string, isSolid: boolean = false) => {
+    // Relighting instructions help Gemini blend the subject into the new background
+    const lightingInstruction = isSolid 
+      ? "Ensure the lighting on the subject remains natural and consistent with the new background."
+      : "Relight the subject subtly to match the colors and mood of the new background for a seamless, realistic integration.";
+    
+    const finalPrompt = `Change the background of this image to ${description}. Keep the main subject exactly as is, maintaining their identity and fine details. ${lightingInstruction} The result should be professional and high-resolution.`;
+    
+    onApply(finalPrompt);
   };
 
   const handleCustomApply = () => {
-    if (!customColor.trim()) return;
-    const prompt = `Change the background of this image to ${customColor}. Keep the foreground subject exactly as is, maintaining all original details and lighting.`;
-    onApply(prompt);
+    if (!customDescription.trim()) return;
+    handleApply(customDescription);
   };
 
   return (
-    <div className="relative w-full h-full min-h-[400px] bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 flex flex-col">
+    <div className="relative w-full h-full min-h-[450px] bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 flex flex-col">
       {/* Preview Area */}
-      <div className="relative flex-1 bg-black/20 flex items-center justify-center overflow-hidden">
+      <div className="relative flex-1 bg-black/40 flex items-center justify-center overflow-hidden">
         <img 
           src={imageSrc} 
-          alt="Original for Background" 
-          className="max-h-[500px] max-w-full h-auto w-auto object-contain p-4"
+          alt="Subject Preview" 
+          className="max-h-[350px] max-w-full h-auto w-auto object-contain p-8 drop-shadow-2xl"
         />
-        <div className="absolute top-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md">
-            Select a color to generate new background
+        <div className="absolute top-4 left-4 bg-indigo-600/20 text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border border-indigo-500/20 backdrop-blur-md flex items-center gap-2">
+            <SparklesIcon /> AI Backdrop Studio
         </div>
       </div>
       
       {/* Controls */}
-      <div className="bg-gray-900 p-4 space-y-4 z-10 border-t border-gray-800">
+      <div className="bg-gray-900/90 backdrop-blur-xl p-6 space-y-6 z-10 border-t border-gray-800">
         
-        {/* Color Grid */}
-        <div>
-            <label className="text-xs font-medium text-gray-400 mb-2 block">Preset Colors</label>
-            <div className="flex flex-wrap gap-2">
-                {COLORS.map((color) => (
-                    <button
-                        key={color.name}
-                        onClick={() => handleColorClick(color.name)}
-                        className={`w-8 h-8 rounded-full border-2 ${color.class} hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900`}
-                        title={color.name}
-                    />
-                ))}
-            </div>
+        <div className="flex gap-4 border-b border-gray-800">
+            <button 
+                onClick={() => setActiveTab('creative')}
+                className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'creative' ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+                Creative Scenes
+            </button>
+            <button 
+                onClick={() => setActiveTab('solid')}
+                className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'solid' ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+                Studio Colors
+            </button>
         </div>
 
-        {/* Custom Input */}
-        <div>
-            <label className="text-xs font-medium text-gray-400 mb-2 block">Custom Color / Description</label>
+        <div className="min-h-[100px]">
+            {activeTab === 'solid' ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Passport & Professional Backdrops</p>
+                    <div className="flex flex-wrap gap-3">
+                        {SOLID_COLORS.map((color) => (
+                            <button
+                                key={color.name}
+                                onClick={() => handleApply(`a solid ${color.name} background`, true)}
+                                className="group flex flex-col items-center gap-2"
+                            >
+                                <div className={`w-10 h-10 rounded-xl border-2 ${color.class} hover:scale-110 transition-all shadow-lg active:scale-95`} />
+                                <span className="text-[9px] font-bold text-gray-500 group-hover:text-gray-300 uppercase">{color.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">AI Scene Generation</p>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                        {CREATIVE_SCENES.map((scene) => (
+                            <button
+                                key={scene.id}
+                                onClick={() => handleApply(scene.prompt)}
+                                className="flex flex-col items-center gap-2 p-2 rounded-xl bg-gray-950 border border-gray-800 hover:border-indigo-500/50 hover:bg-gray-800/50 transition-all group active:scale-95"
+                            >
+                                <span className="text-xl">{scene.icon}</span>
+                                <span className="text-[9px] font-bold text-gray-400 group-hover:text-white uppercase tracking-tighter whitespace-nowrap">{scene.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+
+        <div className="space-y-3 pt-2 border-t border-gray-800">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Custom Scene Description</label>
             <div className="flex gap-2">
-                <input 
-                    type="text" 
-                    value={customColor}
-                    onChange={(e) => setCustomColor(e.target.value)}
-                    placeholder="e.g., Neon Green, Dark Space"
-                    className="flex-1 bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    onKeyDown={(e) => e.key === 'Enter' && handleCustomApply()}
-                />
+                <div className="relative flex-1">
+                    <input 
+                        type="text" 
+                        value={customDescription}
+                        onChange={(e) => setCustomDescription(e.target.value)}
+                        placeholder="e.g., 'A rainy Tokyo street with blurred lights' or 'Moon surface'..."
+                        className="w-full bg-gray-950 border border-gray-700 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 transition-all"
+                        onKeyDown={(e) => e.key === 'Enter' && handleCustomApply()}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500/50">
+                        <MagicWandIcon />
+                    </div>
+                </div>
                 <button 
                     onClick={handleCustomApply}
-                    disabled={!customColor.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 disabled:text-gray-500 text-white px-3 py-2 rounded-lg transition-colors"
+                    disabled={!customDescription.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-600 text-white px-6 rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 font-bold text-xs uppercase tracking-widest"
                 >
-                    <CheckIcon />
+                    Generate
                 </button>
             </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-between items-center pt-2">
+            <p className="text-[10px] text-gray-600 font-medium max-w-[250px]">
+                Tip: Describing the "lighting" or "mood" helps the AI create a more realistic blend.
+            </p>
             <button
                 onClick={onCancel}
-                className="px-4 py-2 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2 text-sm"
+                className="px-6 py-2 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800 transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest border border-transparent hover:border-gray-700"
             >
                 <XIcon /> Cancel
             </button>

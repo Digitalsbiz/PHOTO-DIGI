@@ -1,6 +1,6 @@
 
 /**
- * Applies brightness, contrast, sharpness, and standard color filters to an image.
+ * Applies brightness, contrast, saturation, hue, sharpness, and standard color filters to an image.
  * This runs entirely on the client side (No AI).
  */
 
@@ -10,6 +10,8 @@ export const applyImageAdjustments = async (
     imageSrc: string,
     brightness: number,
     contrast: number,
+    saturation: number = 100,
+    hue: number = 0,
     sharpness: number = 0,
     filterType: FilterType = 'none'
   ): Promise<string> => {
@@ -37,7 +39,7 @@ export const applyImageAdjustments = async (
         }
         
         // Construct CSS filter string
-        let filterString = `brightness(${brightness}%) contrast(${contrast}%)`;
+        let filterString = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) hue-rotate(${hue}deg)`;
         
         if (filterType === 'grayscale') filterString += ' grayscale(100%)';
         if (filterType === 'sepia') filterString += ' sepia(100%)';
@@ -68,7 +70,7 @@ export const applyImageAdjustments = async (
               for (let i = 0; i < 3; i++) {
                 const val = buff[idx + i] * (1 + 4 * s) - 
                             s * (buff[up + i] + buff[down + i] + buff[left + i] + buff[right + i]);
-                data[idx + i] = val; 
+                data[idx + i] = Math.max(0, Math.min(255, val)); 
               }
             }
           }

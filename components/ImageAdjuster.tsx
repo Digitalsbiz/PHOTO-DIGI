@@ -20,6 +20,8 @@ const PRESET_FILTERS: { type: FilterType; label: string; icon: React.ReactNode }
 const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onComplete }) => {
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [hue, setHue] = useState(0);
   const [sharpness, setSharpness] = useState(0);
   const [filterType, setFilterType] = useState<FilterType>('none');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,7 +30,15 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
   const handleSave = async () => {
     setIsProcessing(true);
     try {
-      const resultDataUrl = await applyImageAdjustments(imageSrc, brightness, contrast, sharpness, filterType);
+      const resultDataUrl = await applyImageAdjustments(
+        imageSrc, 
+        brightness, 
+        contrast, 
+        saturation, 
+        hue, 
+        sharpness, 
+        filterType
+      );
       const base64Data = resultDataUrl.split(',')[1];
       onComplete(base64Data);
     } catch (e) {
@@ -49,7 +59,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
   const filterStyle: React.CSSProperties = {
     filter: isComparing 
       ? 'none' 
-      : `brightness(${brightness}%) contrast(${contrast}%) ${
+      : `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) hue-rotate(${hue}deg) ${
           filterType === 'grayscale' ? 'grayscale(100%) ' : 
           filterType === 'sepia' ? 'sepia(100%) ' : 
           filterType === 'invert' ? 'invert(100%) ' : 
@@ -77,7 +87,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
          <img 
             src={imageSrc} 
             alt="Adjustment Preview" 
-            className="max-h-[500px] max-w-full h-auto w-auto object-contain p-4 transition-all duration-75 select-none"
+            className="max-h-[400px] max-w-full h-auto w-auto object-contain p-4 transition-all duration-75 select-none"
             style={filterStyle}
          />
          
@@ -123,7 +133,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
             <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                     <span>Brightness</span>
@@ -142,6 +152,22 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
 
             <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    <span>Saturation</span>
+                    <span className="text-indigo-400 font-mono">{saturation}%</span>
+                </div>
+                <input type="range" value={saturation} min={0} max={200} onChange={(e) => setSaturation(Number(e.target.value))} className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"/>
+            </div>
+
+            <div className="space-y-1.5">
+                <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    <span>Hue Rotate</span>
+                    <span className="text-indigo-400 font-mono">{hue}°</span>
+                </div>
+                <input type="range" value={hue} min={0} max={360} onChange={(e) => setHue(Number(e.target.value))} className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"/>
+            </div>
+
+            <div className="space-y-1.5">
+                <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                     <span>Sharpness</span>
                     <span className="text-indigo-400 font-mono">{sharpness}</span>
                 </div>
@@ -151,7 +177,7 @@ const ImageAdjuster: React.FC<ImageAdjusterProps> = ({ imageSrc, onCancel, onCom
 
         <div className="flex justify-between items-center pt-2">
            <button 
-             onClick={() => { setBrightness(100); setContrast(100); setSharpness(0); setFilterType('none'); }}
+             onClick={() => { setBrightness(100); setContrast(100); setSaturation(100); setHue(0); setSharpness(0); setFilterType('none'); }}
              className="text-[10px] font-bold text-gray-500 hover:text-indigo-400 transition-colors uppercase tracking-widest"
            >
              Reset all
