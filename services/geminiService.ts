@@ -50,10 +50,10 @@ export const processImage = (file: File): Promise<{ base64: string; mimeType: st
         // Cleanup
         URL.revokeObjectURL(img.src);
       };
-      img.onerror = (err) => reject(new Error("Failed to load image for processing."));
+      img.onerror = () => reject(new Error("Failed to load image for processing."));
       img.src = e.target?.result as string;
     };
-    reader.onerror = (err) => reject(new Error("Failed to read file."));
+    reader.onerror = () => reject(new Error("Failed to read file."));
     reader.readAsDataURL(file);
   });
 };
@@ -135,7 +135,7 @@ Guidelines:
 
     if (!generatedImageUrl) {
         const textPart = candidate.content.parts.find(p => p.text);
-        if (textPart) {
+        if (textPart && textPart.text) {
              const msg = textPart.text.length > 100 ? textPart.text.substring(0, 100) + "..." : textPart.text;
             throw new Error(`Model returned text: ${msg}`);
         }

@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { CheckIcon, XIcon, LoadingSpinner } from './Icons';
+import { CheckIcon, LoadingSpinner } from './Icons';
 
 interface TextToolProps {
   imageSrc: string;
@@ -35,7 +36,7 @@ const TextTool: React.FC<TextToolProps> = ({ imageSrc, onCancel, onApply }) => {
   const textRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragStart = (_e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
   };
 

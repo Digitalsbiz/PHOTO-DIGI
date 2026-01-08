@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState } from 'react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg, { PixelCrop } from '../utils/cropImage';
 import { CheckIcon, XIcon, LoadingSpinner } from './Icons';
@@ -23,7 +24,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCancel, onCropC
     setZoom(zoom);
   };
 
-  const onCropAreaChange = (croppedArea: any, croppedAreaPixels: PixelCrop) => {
+  const onCropAreaChange = (_croppedArea: any, croppedAreaPixels: PixelCrop) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 

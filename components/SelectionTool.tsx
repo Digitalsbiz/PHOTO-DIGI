@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { BrushIcon, EraserIcon, CheckIcon, XIcon, TrashIcon } from './Icons';
+import { BrushIcon, EraserIcon, CheckIcon, TrashIcon } from './Icons';
 
 interface SelectionToolProps {
   imageSrc: string;

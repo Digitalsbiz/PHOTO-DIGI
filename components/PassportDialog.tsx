@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { IdCardIcon, XIcon, CheckIcon, PlusIcon, LoadingSpinner, SparklesIcon, ImageIcon, ChevronDownIcon, UserIcon } from './Icons';
+import { IdCardIcon, XIcon, PlusIcon, LoadingSpinner, SparklesIcon, ImageIcon, ChevronDownIcon, UserIcon } from './Icons';
 import { processImage } from '../services/geminiService';
 import { calculateMaxCapacity } from '../utils/passportGenerator';
 
@@ -50,7 +50,7 @@ interface AdditionalImage {
 const PassportDialog: React.FC<PassportDialogProps> = ({ isOpen, currentImageSrc, isOnline, onClose, onConfirm }) => {
   const [quantity, setQuantity] = useState<number | 'max'>(8);
   const [paperSize, setPaperSize] = useState('4x6');
-  const [dimensions, setDimensions] = useState(DIMENSION_OPTIONS[0].value);
+  const [dimensions] = useState(DIMENSION_OPTIONS[0].value);
   const [format, setFormat] = useState(FORMAT_OPTIONS[0].value);
   const [processingMode, setProcessingMode] = useState<'manual' | 'enhance' | 'studio'>(isOnline ? 'enhance' : 'manual');
   
@@ -63,7 +63,7 @@ const PassportDialog: React.FC<PassportDialogProps> = ({ isOpen, currentImageSrc
     if (!isOnline && processingMode !== 'manual') {
       setProcessingMode('manual');
     }
-  }, [isOnline]);
+  }, [isOnline, processingMode]);
 
   const maxCapacity = useMemo(() => {
     return calculateMaxCapacity(paperSize, dimensions);
