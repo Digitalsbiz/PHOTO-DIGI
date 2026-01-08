@@ -1,5 +1,5 @@
 {
-  "name": "NanoEdit - AI Image Editor",
+  "name": "AI Image Editor",
   "description": "An intelligent image editor powered by Gemini 2.5 Flash Image. Works offline for local edits like cropping, color adjustment, and text.",
   "requestFramePermissions": [],
   "short_name": "NanoEdit",
