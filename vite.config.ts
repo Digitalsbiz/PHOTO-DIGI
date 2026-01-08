@@ -1,15 +1,26 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   define: {
-    // Determine how env vars are handled. 
-    // In local dev, we often use .env files. Vite exposes VITE_ prefixed vars.
-    // However, the existing code uses process.env.API_KEY.
-    // We can polyfill it or users should update code to import.meta.env.
-    // For compatibility with the provided code structure:
-    'process.env': process.env
+    // Explicitly define process.env.API_KEY so it is available in the browser.
+    // Vercel will inject the API_KEY from its environment variables during the build.
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      input: {
+        main: './index.html',
+      },
+    },
+  },
+  server: {
+    port: 3000,
+    open: true
   }
 });
