@@ -3,6 +3,7 @@ import { QuickAction } from './types';
 export const GEMINI_MODEL_NAME = 'gemini-2.5-flash-image';
 
 export const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Restore Photo', prompt: 'Professionally restore this old, damaged, or low-quality photograph. Remove noise, grain, scratches, and digital artifacts. Enhance sharpness, clarity, and facial details while preserving the original character and realism.', icon: 'history' },
   { label: 'Enhance Details', prompt: 'Enhance the details and clarity of this image, making it look high definition.', icon: 'sparkles' },
   { label: 'Studio Portrait', prompt: 'Create a hyper-realistic, high-resolution portrait based on this photo. Keep the same person, identity, hairstyle, clothing and natural skin tone from the original, with a neutral studio background.', icon: 'user' },
   { label: 'Passport Photo', prompt: 'Crop and resize the subject to standard passport photo dimensions (portrait aspect ratio), ensuring a plain white background and the subject is centered facing forward.', icon: 'id-card' },
